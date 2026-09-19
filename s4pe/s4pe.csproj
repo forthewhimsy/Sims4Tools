@@ -62,6 +62,9 @@
   <ItemGroup>
     <Compile Include="BuiltInValueControl.cs" />
     <Compile Include="ForceFocus.cs" />
+    <Compile Include="Import\ClipEventConflictDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Import\ExperimentalDBCWarning.cs">
       <SubType>Form</SubType>
     </Compile>

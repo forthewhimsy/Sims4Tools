@@ -45,6 +45,9 @@ Icon
 *.user
 *.sln.docstates
 
+# Visual Studio IDE cache folder
+.vs/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

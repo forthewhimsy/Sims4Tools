@@ -106,6 +106,10 @@ namespace S4PIDemoFE
             this.enableDDSPreviewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.enableFallbackTextPreviewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.enableFallbackHexPreviewToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.preserveClipEventsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.clipEventsNeverToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.clipEventsAskToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.clipEventsAlwaysToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.askToAutosaveDBCToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator11 = new System.Windows.Forms.ToolStripSeparator();
             this.organiseBookmarksSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -625,6 +629,7 @@ namespace S4PIDemoFE
             this.enableFallbackTextPreviewToolStripMenuItem,
             this.enableFallbackHexPreviewToolStripMenuItem,
             this.askToAutosaveDBCToolStripMenuItem,
+            this.preserveClipEventsToolStripMenuItem,
             this.toolStripSeparator11,
             this.organiseBookmarksSettingsToolStripMenuItem,
             this.organiseFolderBookmarksToolStripMenuItem,
@@ -671,6 +676,37 @@ namespace S4PIDemoFE
             this.askToAutosaveDBCToolStripMenuItem.Size = new System.Drawing.Size(228, 22);
             this.askToAutosaveDBCToolStripMenuItem.Text = "Pro&mpt for dbc autosaving";
             this.askToAutosaveDBCToolStripMenuItem.Click += new System.EventHandler(this.tsMBS_Click);
+            // 
+            // preserveClipEventsToolStripMenuItem
+            // 
+            this.preserveClipEventsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.clipEventsNeverToolStripMenuItem,
+            this.clipEventsAskToolStripMenuItem,
+            this.clipEventsAlwaysToolStripMenuItem});
+            this.preserveClipEventsToolStripMenuItem.Name = "preserveClipEventsToolStripMenuItem";
+            this.preserveClipEventsToolStripMenuItem.Size = new System.Drawing.Size(228, 22);
+            this.preserveClipEventsToolStripMenuItem.Text = "Preserve clip &events on replace";
+            // 
+            // clipEventsNeverToolStripMenuItem
+            // 
+            this.clipEventsNeverToolStripMenuItem.Name = "clipEventsNeverToolStripMenuItem";
+            this.clipEventsNeverToolStripMenuItem.Size = new System.Drawing.Size(228, 22);
+            this.clipEventsNeverToolStripMenuItem.Text = "&Never - let the import overwrite them";
+            this.clipEventsNeverToolStripMenuItem.Click += new System.EventHandler(this.tsMBS_Click);
+            // 
+            // clipEventsAskToolStripMenuItem
+            // 
+            this.clipEventsAskToolStripMenuItem.Name = "clipEventsAskToolStripMenuItem";
+            this.clipEventsAskToolStripMenuItem.Size = new System.Drawing.Size(228, 22);
+            this.clipEventsAskToolStripMenuItem.Text = "&Ask when both clips have events";
+            this.clipEventsAskToolStripMenuItem.Click += new System.EventHandler(this.tsMBS_Click);
+            // 
+            // clipEventsAlwaysToolStripMenuItem
+            // 
+            this.clipEventsAlwaysToolStripMenuItem.Name = "clipEventsAlwaysToolStripMenuItem";
+            this.clipEventsAlwaysToolStripMenuItem.Size = new System.Drawing.Size(228, 22);
+            this.clipEventsAlwaysToolStripMenuItem.Text = "A&lways keep the events already in the package";
+            this.clipEventsAlwaysToolStripMenuItem.Click += new System.EventHandler(this.tsMBS_Click);
             // 
             // toolStripSeparator11
             // 
@@ -1154,6 +1190,10 @@ namespace S4PIDemoFE
         private System.Windows.Forms.ToolStripMenuItem bwcmCopyResourceKey;
         public System.Windows.Forms.ContextMenuStrip filterContextMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem enableFallbackHexPreviewToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem preserveClipEventsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem clipEventsNeverToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem clipEventsAskToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem clipEventsAlwaysToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem enableFallbackTextPreviewToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem replaceSelectedToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem bwcmReplaceSelected;

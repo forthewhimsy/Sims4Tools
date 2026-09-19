@@ -71,6 +71,8 @@ namespace S4PIDemoFE
                 automaticUpdateChecksToolStripMenuItem, enableDDSPreviewToolStripMenuItem,
                 enableFallbackTextPreviewToolStripMenuItem, enableFallbackHexPreviewToolStripMenuItem,
                 askToAutosaveDBCToolStripMenuItem,
+                clipEventsNeverToolStripMenuItem, clipEventsAskToolStripMenuItem,
+                clipEventsAlwaysToolStripMenuItem,
                 organiseBookmarksSettingsToolStripMenuItem, organiseFolderBookmarksToolStripMenuItem,
                 externalProgramsToolStripMenuItem, manageWrappersToolStripMenuItem,
                 saveSettingsToolStripMenuItem,
@@ -101,6 +103,17 @@ namespace S4PIDemoFE
             Checked(MB.MBS_previewDDS, Properties.Settings.Default.EnableDDSPreview);
             Checked(MB.MBS_fallbackTextPreview, Properties.Settings.Default.EnableFallbackTextPreview);
             Checked(MB.MBS_fallbackHexPreview, Properties.Settings.Default.EnableFallbackHexPreview);
+            CheckedClipEventPreservation(Properties.Settings.Default.ClipEventPreservation);
+        }
+
+        /// <summary>
+        /// Ticks whichever of the three clip event items matches <paramref name="choice"/>.
+        /// </summary>
+        public void CheckedClipEventPreservation(int choice)
+        {
+            Checked(MB.MBS_clipEventsNever, choice == 0);
+            Checked(MB.MBS_clipEventsAsk, choice == 1);
+            Checked(MB.MBS_clipEventsAlways, choice == 2);
         }
 
         private void Checker_AutoUpdateChoice_Changed(object sender, EventArgs e)
@@ -161,6 +174,9 @@ namespace S4PIDemoFE
             MBS_fallbackTextPreview,
             MBS_fallbackHexPreview,
             MBS_askAutoSaveDBC,
+            MBS_clipEventsNever,
+            MBS_clipEventsAsk,
+            MBS_clipEventsAlways,
             MBS_bookmarks,
             MBS_customplaces,
             MBS_externals,

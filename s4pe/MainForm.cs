@@ -213,6 +213,7 @@ namespace S4PIDemoFE
             }
             if (this.cmdLineBatch.Count > 0)
             {
+                this.BeginImport();
                 try
                 {
                     this.Enabled = false;
@@ -221,6 +222,7 @@ namespace S4PIDemoFE
                 finally
                 {
                     this.Enabled = true;
+                    this.EndImport();
                 }
                 this.cmdLineBatch = new List<string>();
             }
@@ -1453,31 +1455,39 @@ namespace S4PIDemoFE
 
         private void ResourceAdd()
         {
-            ResourceDetails ir =
-                new ResourceDetails( /*20120820 CurrentPackage.Find(x => x.ResourceType == 0x0166038C) != null/**/
-                    true,
-                    false);
-            DialogResult dr = ir.ShowDialog();
-            if (dr != DialogResult.OK)
+            this.BeginImport();
+            try
             {
-                return;
+                ResourceDetails ir =
+                    new ResourceDetails( /*20120820 CurrentPackage.Find(x => x.ResourceType == 0x0166038C) != null/**/
+                        true,
+                        false);
+                DialogResult dr = ir.ShowDialog();
+                if (dr != DialogResult.OK)
+                {
+                    return;
+                }
+
+                IResourceIndexEntry rie = this.NewResource(ir,
+                    null,
+                    ir.Replace ? DuplicateHandling.Replace : DuplicateHandling.Reject,
+                    ir.Compress);
+                if (rie == null)
+                {
+                    return;
+                }
+
+                this.browserWidget1.Add(rie);
+                this.package.ReplaceResource(rie, this.resource); //Ensure there's an actual resource in the package
+
+                if (ir.UseName && !string.IsNullOrEmpty(ir.ResourceName))
+                {
+                    this.browserWidget1.ResourceName(ir.Instance, ir.ResourceName, true, ir.AllowRename);
+                }
             }
-
-            IResourceIndexEntry rie = this.NewResource(ir,
-                null,
-                ir.Replace ? DuplicateHandling.Replace : DuplicateHandling.Reject,
-                ir.Compress);
-            if (rie == null)
+            finally
             {
-                return;
-            }
-
-            this.browserWidget1.Add(rie);
-            this.package.ReplaceResource(rie, this.resource); //Ensure there's an actual resource in the package
-
-            if (ir.UseName && !string.IsNullOrEmpty(ir.ResourceName))
-            {
-                this.browserWidget1.ResourceName(ir.Instance, ir.ResourceName, true, ir.AllowRename);
+                this.EndImport();
             }
         }
 
@@ -1713,6 +1723,248 @@ namespace S4PIDemoFE
             Allow
         }
 
+        #region Clip event preservation
+
+        /// <summary>
+        /// Values of Properties.Settings.Default.ClipEventPreservation.
+        /// </summary>
+        private enum ClipEventPolicy
+        {
+            /// <summary>Let an import overwrite events, as s4pe always used to.</summary>
+            Never = 0,
+
+            /// <summary>Only ask when both the incoming and the existing resource have events.</summary>
+            Ask = 1,
+
+            /// <summary>Always keep the events already in the package.</summary>
+            Always = 2,
+        }
+
+        /// <summary>
+        /// The answer given for the import in progress, so that a batch import asks at
+        /// most once. Null while no answer has been carried forward.
+        /// </summary>
+        private EventPreservation? clipEventChoiceForThisImport;
+
+        /// <summary>
+        /// Anything worth telling the user about the events handled during the import in
+        /// progress, held back so a batch produces one summary instead of a prompt per clip.
+        /// </summary>
+        private readonly List<string> clipEventWarnings = new List<string>();
+
+        /// <summary>
+        /// Wrappers looked up by resource type for the import in progress. Building one is
+        /// not free and a large import replaces the same few types over and over, so the
+        /// lookup - including the misses, held as null - is worth keeping.
+        /// </summary>
+        private readonly Dictionary<uint, IEventPreservingResource> clipEventPreservers =
+            new Dictionary<uint, IEventPreservingResource>();
+
+        /// <summary>The most warnings to spell out before summarising the rest as a count.</summary>
+        private const int MaxClipEventWarningsListed = 15;
+
+        /// <summary>
+        /// Forgets everything left over from an earlier import. Called by every action that
+        /// can go on to add or replace resources in the package.
+        /// </summary>
+        private void BeginImport()
+        {
+            this.clipEventChoiceForThisImport = null;
+            this.clipEventWarnings.Clear();
+            this.clipEventPreservers.Clear();
+        }
+
+        /// <summary>
+        /// Reports whatever the import had to say about the clip events it handled. Called
+        /// from the finally block of every action that calls <see cref="BeginImport"/>, so it
+        /// runs whether the import finished, was cancelled or threw.
+        /// </summary>
+        private void EndImport()
+        {
+            if (this.clipEventWarnings.Count == 0)
+            {
+                return;
+            }
+
+            var report = new StringBuilder();
+            report.AppendLine("Some clip events need your attention after this import:");
+            report.AppendLine();
+            for (int i = 0; i < this.clipEventWarnings.Count && i < MaxClipEventWarningsListed; i++)
+            {
+                report.AppendLine(this.clipEventWarnings[i]);
+            }
+            if (this.clipEventWarnings.Count > MaxClipEventWarningsListed)
+            {
+                report.AppendLine(string.Format("...and {0} more.",
+                    this.clipEventWarnings.Count - MaxClipEventWarningsListed));
+            }
+            report.AppendLine();
+            report.Append("Check the affected clips in the Grid.");
+
+            this.clipEventWarnings.Clear();
+            CopyableMessageBox.Show(report.ToString(),
+                "Clip events",
+                CopyableMessageBoxButtons.OK,
+                CopyableMessageBoxIcon.Warning);
+        }
+
+        /// <summary>
+        /// The wrapper that knows how to preserve events for <paramref name="resourceType"/>,
+        /// or null if its wrapper does not do that.
+        /// </summary>
+        private IEventPreservingResource PreserverFor(uint resourceType)
+        {
+            IEventPreservingResource preserver;
+            if (this.clipEventPreservers.TryGetValue(resourceType, out preserver))
+            {
+                return preserver;
+            }
+
+            try
+            {
+                preserver = WrapperDealer.CreateNewResource(0, "0x" + resourceType.ToString("X8"))
+                            as IEventPreservingResource;
+            }
+            catch (Exception)
+            {
+                preserver = null;
+            }
+            this.clipEventPreservers.Add(resourceType, preserver);
+            return preserver;
+        }
+
+        /// <summary>
+        /// Lets the wrapper for <paramref name="rk"/> carry hand authored events from the
+        /// resource that is about to be deleted over to the one replacing it.
+        /// </summary>
+        /// <remarks>
+        /// Replacing a resource is a byte level delete-and-add, which is why importing a
+        /// freshly exported clip over one whose ClipEvents were filled in by hand used to
+        /// throw all of them away. Anything that goes wrong here returns <paramref name="ms"/>
+        /// untouched, so an import never fails because of this - but if events are going to
+        /// be lost the user is told, because that is the very thing this exists to prevent.
+        /// </remarks>
+        private MemoryStream PreserveEventsOnReplace(IResourceKey rk, IResourceIndexEntry rie, MemoryStream ms)
+        {
+            ClipEventPolicy policy = (ClipEventPolicy)Properties.Settings.Default.ClipEventPreservation;
+            if (policy == ClipEventPolicy.Never || ms == null || rie == null)
+            {
+                return ms;
+            }
+
+            try
+            {
+                IEventPreservingResource preserver = this.PreserverFor(rk.ResourceType);
+                if (preserver == null)
+                {
+                    return ms;
+                }
+
+                byte[] existing = WrapperDealer.GetResource(0, this.CurrentPackage, rie, true).AsBytes;
+                byte[] incoming = ms.ToArray();
+
+                int existingEvents = preserver.CountPreservableEvents(existing);
+                if (existingEvents == 0)
+                {
+                    // Nothing in the package worth carrying over.
+                    return ms;
+                }
+
+                // A negative count means the wrapper could not read that resource. The
+                // replace still goes ahead, because that is what was asked for, but it
+                // cannot happen quietly: events are about to be lost.
+                if (existingEvents < 0)
+                {
+                    this.clipEventWarnings.Add(rk +
+                        ": could not read the resource being replaced, so any clip events it "
+                        + "had were not carried over");
+                    return ms;
+                }
+                int incomingEvents = preserver.CountPreservableEvents(incoming);
+                if (incomingEvents < 0)
+                {
+                    this.clipEventWarnings.Add(string.Format(
+                        "{0}: could not read the incoming resource, so {1} existing clip event{2} "
+                        + "{3} not carried over",
+                        rk,
+                        existingEvents,
+                        existingEvents == 1 ? "" : "s",
+                        existingEvents == 1 ? "was" : "were"));
+                    return ms;
+                }
+
+                EventPreservation mode;
+                if (incomingEvents == 0 || policy == ClipEventPolicy.Always)
+                {
+                    // The everyday case: a re-exported animation carries no events of its
+                    // own, so there is nothing to weigh up and nothing to ask about.
+                    mode = EventPreservation.KeepExisting;
+                }
+                else
+                {
+                    mode = this.AskClipEventChoice(rk, existingEvents, incomingEvents);
+                }
+
+                if (mode == EventPreservation.KeepIncoming)
+                {
+                    return ms;
+                }
+
+                string warning;
+                byte[] preserved = preserver.PreserveEvents(incoming, existing, mode, out warning);
+                if (!string.IsNullOrEmpty(warning))
+                {
+                    this.clipEventWarnings.Add(rk + ": " + warning);
+                }
+                return preserved == null ? ms : new MemoryStream(preserved);
+            }
+            catch (Exception)
+            {
+                // Preserving events is a convenience, never a reason to fail an import.
+                return ms;
+            }
+        }
+
+        /// <summary>
+        /// Asks what to do about a resource whose events clash with the incoming one, reusing
+        /// the answer if the user asked for it to cover the rest of the import.
+        /// </summary>
+        private EventPreservation AskClipEventChoice(IResourceKey rk, int existingEvents, int incomingEvents)
+        {
+            if (this.clipEventChoiceForThisImport.HasValue)
+            {
+                return this.clipEventChoiceForThisImport.Value;
+            }
+
+            using (ClipEventConflictDialog dialog =
+                new ClipEventConflictDialog(rk, existingEvents, incomingEvents))
+            {
+                // Cancelling is not a decision, so it applies to this resource only and takes
+                // the conservative option rather than committing the rest of the import.
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return EventPreservation.KeepExisting;
+                }
+
+                if (dialog.ApplyToAll)
+                {
+                    this.clipEventChoiceForThisImport = dialog.Choice;
+                }
+                return dialog.Choice;
+            }
+        }
+
+        /// <summary>
+        /// Records the chosen clip event policy and ticks the matching menu item.
+        /// </summary>
+        private void SettingsClipEventPreservation(ClipEventPolicy policy)
+        {
+            Properties.Settings.Default.ClipEventPreservation = (int)policy;
+            this.menuBarWidget.CheckedClipEventPreservation((int)policy);
+        }
+
+        #endregion
+
         private IResourceIndexEntry NewResource(IResourceKey rk, MemoryStream ms, DuplicateHandling dups, bool compress)
         {
             IResourceIndexEntry rie = this.CurrentPackage.Find(rk.Equals);
@@ -1724,6 +1976,7 @@ namespace S4PIDemoFE
                 }
                 if (dups == DuplicateHandling.Replace)
                 {
+                    ms = this.PreserveEventsOnReplace(rk, rie, ms);
                     this.CurrentPackage.DeleteResource(rie);
                 }
             }
@@ -2197,6 +2450,15 @@ namespace S4PIDemoFE
                         break;
                     case MenuBarWidget.MB.MBS_askAutoSaveDBC:
                         this.settingsMBS_askAutoSaveDBC();
+                        break;
+                    case MenuBarWidget.MB.MBS_clipEventsNever:
+                        this.SettingsClipEventPreservation(ClipEventPolicy.Never);
+                        break;
+                    case MenuBarWidget.MB.MBS_clipEventsAsk:
+                        this.SettingsClipEventPreservation(ClipEventPolicy.Ask);
+                        break;
+                    case MenuBarWidget.MB.MBS_clipEventsAlways:
+                        this.SettingsClipEventPreservation(ClipEventPolicy.Always);
                         break;
                     case MenuBarWidget.MB.MBS_bookmarks:
                         this.SettingsOrganiseBookmarks();
@@ -3217,7 +3479,15 @@ namespace S4PIDemoFE
 
         private void AfterEdit(MemoryStream ms)
         {
-            if (ms != null)
+            if (ms == null)
+            {
+                return;
+            }
+
+            // Committing an external edit replaces a resource just like an import does, so it
+            // gets its own import scope: no answer or warning leaks in from, or out into, one.
+            this.BeginImport();
+            try
             {
                 int dr = CopyableMessageBox.Show("Resource has been updated.  Commit changes?",
                     "Commit changes?",
@@ -3238,6 +3508,10 @@ namespace S4PIDemoFE
                 {
                     this.browserWidget1.Add(rie);
                 }
+            }
+            finally
+            {
+                this.EndImport();
             }
         }
 

@@ -1653,9 +1653,17 @@ namespace s4pi.Animation
             get { return GetContentFields(requestedApiVersion, GetType()); }
         }
 
+        /// <summary>
+        /// Two events are the same IFF they also happen at the same time.
+        /// </summary>
         public bool Equals(ClipEvent other)
         {
-            if (this.GetType() != other.GetType() || this.unknown1 != other.unknown1 || this.unknown2 != other.unknown2) return false;
+            if (other == null || this.GetType() != other.GetType()
+                || this.unknown1 != other.unknown1 || this.unknown2 != other.unknown2
+                || this.timecode != other.timecode)
+            {
+                return false;
+            }
             return this.isEqual(other);
         }
         protected abstract bool isEqual(ClipEvent other);
