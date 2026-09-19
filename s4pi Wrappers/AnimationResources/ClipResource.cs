@@ -19,12 +19,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using s4pi.Interfaces;
 
 namespace s4pi.Animation
 {
-    public class ClipResource : AResource
+    public class ClipResource : AResource, IEventPreservingResource
     {
         uint version;               // currently 14
         private uint flags;
@@ -280,6 +281,89 @@ namespace s4pi.Animation
         {
             get { return 1; }
         }
+
+        #region IEventPreservingResource
+
+        /// <summary>
+        /// The number of ClipEvents in a serialized clip, or -1 if it could not be read.
+        /// </summary>
+        public int CountPreservableEvents(byte[] resource)
+        {
+            return ClipEventBlock.CountEvents(resource);
+        }
+
+        /// <summary>
+        /// Transplants ClipEvents from <paramref name="existing"/> into <paramref name="incoming"/>.
+        /// </summary>
+        /// <remarks>
+        /// This works on the raw bytes of both clips rather than on parsed resources:
+        /// the event block is swapped out in place and every other byte of the incoming
+        /// clip - in particular its S3CLIP codec data - is copied through untouched.
+        /// If either clip cannot be walked, <paramref name="incoming"/> is returned as is.
+        /// </remarks>
+        public byte[] PreserveEvents(byte[] incoming, byte[] existing, EventPreservation mode,
+                                     out string warning)
+        {
+            warning = null;
+            if (mode == EventPreservation.KeepIncoming || incoming == null || existing == null)
+            {
+                return incoming;
+            }
+
+            ClipEventBlock.Location incomingEvents, existingEvents;
+            if (!ClipEventBlock.TryLocate(incoming, out incomingEvents)
+                || !ClipEventBlock.TryLocate(existing, out existingEvents))
+            {
+                return incoming;
+            }
+
+            List<byte[]> events = ClipEventBlock.SplitEvents(existing, existingEvents);
+            if (mode == EventPreservation.Merge)
+            {
+                // Keep the incoming events, then append every existing event that is not
+                // already there byte for byte. Comparing whole event records rather than
+                // using ClipEvent.Equals is what makes a run of identical sounds at
+                // different times survive intact.
+                List<byte[]> merged = ClipEventBlock.SplitEvents(incoming, incomingEvents);
+                foreach (byte[] candidate in events)
+                {
+                    if (!ContainsRecord(merged, candidate))
+                    {
+                        merged.Add(candidate);
+                    }
+                }
+
+                // Two interleaved sets are far easier to read and edit in timecode order.
+                // Only Merge reorders: the other modes hand back an event block byte for
+                // byte as it was authored.
+                ClipEventBlock.SortByTimecode(merged);
+                events = merged;
+            }
+
+            float duration = ClipEventBlock.ReadDuration(incoming);
+            int pastEnd = ClipEventBlock.CountPastEnd(events, duration);
+            if (pastEnd > 0)
+            {
+                warning = string.Format(
+                    "{0} of {1} event{2} fall after the end of the {3:0.###}s replacement clip",
+                    pastEnd,
+                    events.Count,
+                    events.Count == 1 ? "" : "s",
+                    duration);
+            }
+
+            return ClipEventBlock.ReplaceEvents(incoming, incomingEvents, events);
+        }
+
+        /// <summary>
+        /// Whether <paramref name="records"/> already holds this exact event record.
+        /// </summary>
+        private static bool ContainsRecord(List<byte[]> records, byte[] candidate)
+        {
+            return records.Any(record => Enumerable.SequenceEqual(record, candidate));
+        }
+
+        #endregion
 
         public class Vector3 : AHandlerElement, IEquatable<Vector3>
         {

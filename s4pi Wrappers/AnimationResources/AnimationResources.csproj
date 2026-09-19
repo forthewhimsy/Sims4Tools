@@ -35,6 +35,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClipEventBlock.cs" />
     <Compile Include="ClipEvents.cs" />
     <Compile Include="ClipResource.cs" />
     <Compile Include="ClipResourceHandler.cs" />

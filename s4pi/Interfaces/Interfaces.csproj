@@ -77,6 +77,7 @@
     <Compile Include="DependentList.cs" />
     <Compile Include="SimpleList.cs" />
     <Compile Include="ElementPriorityAttribute.cs" />
+    <Compile Include="IEventPreservingResource.cs" />
     <Compile Include="IGenericAdd.cs" />
     <Compile Include="IResourceKey.cs" />
     <Compile Include="Properties\AssemblyVersion.cs" />

@@ -101,6 +101,7 @@ namespace S4PIDemoFE
 
         private void ResourceImport()
         {
+            this.BeginImport();
             bool useNames = this.controlPanel1.UseNames;
             try
             {
@@ -124,6 +125,7 @@ namespace S4PIDemoFE
             }
             finally
             {
+                this.EndImport();
                 this.controlPanel1.UseNames = useNames;
                 this.browserWidget1.Visible = true;
                 this.Enabled = true;
@@ -132,6 +134,7 @@ namespace S4PIDemoFE
 
         private void ResourceImportPackages()
         {
+            this.BeginImport();
             try
             {
                 this.Enabled = false;
@@ -157,12 +160,14 @@ namespace S4PIDemoFE
             }
             finally
             {
+                this.EndImport();
                 this.Enabled = true;
             }
         }
 
         private void ResourceReplaceFrom()
         {
+            this.BeginImport();
             var savedTitle = this.importPackagesDialog.Title;
             try
             {
@@ -189,6 +194,7 @@ namespace S4PIDemoFE
             }
             finally
             {
+                this.EndImport();
                 this.Enabled = true;
                 this.importPackagesDialog.Title = savedTitle;
             }
@@ -196,6 +202,7 @@ namespace S4PIDemoFE
 
         private void ResourceImportAsDbc()
         {
+            this.BeginImport();
             if (MainForm.allowList.Count == 0)
             {
                 MainForm.allowList.AddRange(MainForm.xmlList);
@@ -284,6 +291,7 @@ namespace S4PIDemoFE
             }
             finally
             {
+                this.EndImport();
                 this.browserWidget1.Visible = true;
                 this.lbProgress.Text = "";
                 Application.DoEvents();
@@ -512,6 +520,7 @@ namespace S4PIDemoFE
 
         private void ResourcePaste()
         {
+            this.BeginImport();
             try
             {
                 this.Enabled = false;
@@ -555,12 +564,14 @@ namespace S4PIDemoFE
             }
             finally
             {
+                this.EndImport();
                 this.Enabled = true;
             }
         }
 
         private void browserWidget1_DragDrop(object sender, DragEventArgs e)
         {
+            this.BeginImport();
             string[] fileDrop = e.Data.GetData("FileDrop") as string[];
             if (fileDrop == null || fileDrop.Length == 0)
             {
@@ -586,6 +597,7 @@ namespace S4PIDemoFE
             }
             finally
             {
+                this.EndImport();
                 this.Enabled = true;
             }
         }
